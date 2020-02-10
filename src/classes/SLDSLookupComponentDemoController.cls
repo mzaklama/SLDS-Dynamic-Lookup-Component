@@ -1,12 +1,13 @@
 public class SLDSLookupComponentDemoController {
     
     public contact con{get;set;}
+    public String oppId{get;set;}
     
     /**
      * Constructor
     **/
     public SLDSLookupComponentDemoController(){
-        con = new Contact();
+        con = new Contact(AccountId = '00128000006QbVK', OwnerId = '00528000000MB72');
     }
     
     /**

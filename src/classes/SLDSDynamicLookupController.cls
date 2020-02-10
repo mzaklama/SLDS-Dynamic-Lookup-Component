@@ -19,17 +19,46 @@ public class SLDSDynamicLookupController {
             uniqueComponentId = label.replace(' ', '').toLowerCase();
         }
     }
+
+    public String setField{
+        get;
+        set{
+            if(String.isNotBlank(value)){
+                setField = value;
+                if(String.isBlank(photoValue)){
+                    photoValue = '';
+                }
+
+                List<Wrapper> results = search(objectName, fieldApiNames, displayPattern, photoValue, null, value, filters);
+                
+                if(!results.isEmpty()){
+                    displayValue = results[0].displayValue;
+                    if(String.isNotBlank(results[0].photoUrl)){
+                        photoUrl = results[0].photoUrl;
+                    }else{
+                        photoUrl = '';
+                    }
+                }
+            }
+        }
+    }
     
     public String uniqueComponentId{get;set;}
     public String objectLabelPlural{get;set;}
-    
+    public String displayValue{get;set;}
+    public String photoUrl{get;set;}
+    public String fieldApiNames{get;set;}
+    public String displayPattern{get;set;}
+    public String photoValue{get;set;}
+    public String filters{get;set;}
+
     /**
 	 * Remote action method to send list of records
 	 * @param  searchText 
 	 * @return  List<Wrapper>
 	 */
 	@RemoteAction
-	public static List<Wrapper> search(String objectName, String displayFieldNames, String fieldsPattern, String photoValue,String searchText) {
+	public static List<Wrapper> search(String objectName, String displayFieldNames, String fieldsPattern, String photoValue,String searchText, String recordId, String queryFilters) {
 	    String query;
         List<String> displayFieldNamesLst;
         String photoFieldName;
@@ -44,9 +73,21 @@ public class SLDSDynamicLookupController {
         //prepare a where clause
         displayFieldNamesLst = displayFieldNames.split(',');
         String whereClause = '';
-        for(String fieldName : displayFieldNamesLst){
-            whereClause += String.isBlank(whereClause) ? ' WHERE ' + fieldName + ' LIKE \'%{text}%\'' : ' OR ' + fieldName + ' LIKE \'%{text}%\'';
+
+        if(String.isBlank(recordId)){
+            for(String fieldName : displayFieldNamesLst){
+                whereClause += String.isBlank(whereClause) ? ' WHERE ' + fieldName + ' LIKE \'%{text}%\'' : ' OR ' + fieldName + ' LIKE \'%{text}%\'';
+            }
+        }else{
+            whereClause += ' WHERE Id =: recordId';
         }
+
+        String filtersClause = createWhereClauseFromFilters(queryFilters);
+
+        if(String.isNotBlank(filtersClause)){
+            whereClause += ' AND ' + filtersClause;
+        }
+
         //add Id field to field names if necessary
         if(!displayFieldNames.toLowerCase().contains('id')){
             displayFieldNames += ', Id';
@@ -67,7 +108,14 @@ public class SLDSDynamicLookupController {
         }
         
         query = 'SELECT ' + displayFieldNames + ' FROM ' + objectName + whereClause;
-        finalQuery = query.replace('{text}', searchText);
+
+        if(String.isBlank(recordId)){
+            finalQuery = query.replace('{text}', searchText);
+        }else{
+            finalQuery = query;
+        }
+
+        System.debug(':::QUERY:::' + finalQuery);
 	    
 	    for(Sobject sobj : database.query(finalQuery)){
 	        String displayValue = fieldsPattern;
@@ -82,7 +130,15 @@ public class SLDSDynamicLookupController {
 	    }
 	    return results;
 	}
-	
+
+    private static String createWhereClauseFromFilters(String queryFilters){
+        String filtersClause;
+        if(queryFilters != null && String.isNotBlank(queryFilters)){
+            String replacedFilters = queryFilters.replace('\\', '');
+            filtersClause = String.join(replacedFilters.split(','), ' AND ');
+        }
+        return filtersClause;
+    }	
 	
 	/*************************************************************************
 	 ******************************* WRAPPER **************************************
